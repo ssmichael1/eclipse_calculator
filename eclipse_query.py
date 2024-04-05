@@ -8,6 +8,8 @@ import googlemaps
 from datetime import datetime
 import os
 
+sk.utils.update_datafiles()
+
 api_key = os.environ.get('GOOGLE_API_KEY')
 
 gmaps = googlemaps.Client(key=api_key)
