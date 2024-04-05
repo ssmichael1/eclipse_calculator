@@ -112,6 +112,10 @@ def eclipse_stats(loc: sk.itrfcoord):
 app = Flask(__name__)
 
 @app.route("/")
+def hello():
+    return "Hello World!"
+
+@app.route("/api/")
 def return_eclipse_stats():
 
     location = request.args.get('location')
