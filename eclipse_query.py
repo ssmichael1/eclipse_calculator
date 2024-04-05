@@ -3,12 +3,15 @@ import numpy as np
 import math as m
 from flask import jsonify, request, Flask
 
-
 import googlemaps
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import os
 
-sk.utils.update_datafiles()
+astro_dir = os.environ.get('ASTRO_DIR')
+if astro_dir is None:
+    sk.utils.update_datafiles()
 
 api_key = os.environ.get('GOOGLE_API_KEY')
 
@@ -62,13 +65,13 @@ def eclipse_stats(loc: sk.itrfcoord):
     if len(eidx) > 0:
         data["total"] = {
             "start": timearr[eidx[0][0]].datetime(),
-            "end": timearr[eidx[-1][0]].datetime(),
-            "duration": (timearr[eidx[-1][0]] - timearr[eidx[0][0]]).seconds(),
+            "stop": timearr[eidx[-1][0]].datetime(),
+            "duration_seconds": (timearr[eidx[-1][0]] - timearr[eidx[0][0]]).seconds(),
         }
         data["partial"] = {
             "start": timearr[pidx[0][0]].datetime(),
-            "end": timearr[pidx[-1][0]].datetime(),
-            "duration": (timearr[pidx[-1][0]] - timearr[pidx[0][0]]).seconds(),
+            "stop": timearr[pidx[-1][0]].datetime(),
+            "duration_seconds": (timearr[pidx[-1][0]] - timearr[pidx[0][0]]).seconds(),
         }
     elif np.min(theta) < (sun_extent_rad + moon_extent_rad):
         durp = timearr[pidx[-1]][0] - timearr[pidx[0]][0]
@@ -97,11 +100,12 @@ def eclipse_stats(loc: sk.itrfcoord):
         data["partial"] = {
             "start": timearr[pidx[0][0]].datetime(),
             "stop": timearr[pidx[-1][0]].datetime(),
-            "duration": (timearr[pidx[-1][0]] - timearr[pidx[0][0]]).seconds(),
+            "duration_seconds": (timearr[pidx[-1][0]] - timearr[pidx[0][0]]).seconds(),
             "minangle_deg": np.min(theta) * 180.0 / m.pi,
             "max_area_occlusion": max_frac_area_occluded,
             "max_diam_occlusion": max_frac_diam_occluded,
         }
+        data["total"] = None
     else:
         data["total"] = None
         data["partial"] = None
@@ -135,13 +139,32 @@ def return_eclipse_stats():
         except Exception:
             return jsonify({"error": "Could not find location"}), 400
 
-
     loc = sk.itrfcoord(
         latitude_deg=float(latitude),
         longitude_deg=float(longitude))        
 
     stats = eclipse_stats(loc)
+    
+    tz = None
+    if stats['partial'] is not None and 'start' in stats['partial'].keys():
+        tz = gmaps.timezone({'latitude': latitude, 'longitude': longitude}, timestamp = stats['partial']['start'])
+    elif stats['total'] is not None and 'start' in stats['total'].keys():
+        tz = gmaps.timezone({'latitude': latitude, 'longitude': longitude}, timestamp = stats['total']['start'])
+    
+    if tz is not None and tz['status'] == 'OK':
+        localtz = ZoneInfo(tz['timeZoneId'])
+        print(localtz)
+        if stats['partial'] is not None and 'start' in stats['partial'].keys():
+            stats['partial']['start'] = str(stats['partial']['start'].astimezone(localtz))
+            stats['partial']['stop'] = str(stats['partial']['stop'].astimezone(localtz))
+        if stats['total'] is not None and 'start' in stats['total'].keys():
+            stats['total']['start'] = str(stats['total']['start'].astimezone(localtz))
+            stats['total']['stop'] = str(stats['total']['stop'].astimezone(localtz))
+
+    if location:
+        stats['location'] = location
     print(stats)
+    print(tz)
     return jsonify(stats), 200
 
 if __name__ == "__main__":
