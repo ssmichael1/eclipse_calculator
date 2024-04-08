@@ -97,9 +97,11 @@ def eclipse_stats(loc: sk.itrfcoord):
         max_frac_diam_occluded = 1 - (sun_extent_rad + mintheta - moon_extent_rad) / (
             2 * sun_extent_rad
         )
+    
         data["partial"] = {
             "start": timearr[pidx[0][0]].datetime(),
             "stop": timearr[pidx[-1][0]].datetime(),
+            "peak": timearr[idx].datetime(),
             "duration_seconds": (timearr[pidx[-1][0]] - timearr[pidx[0][0]]).seconds(),
             "minangle_deg": np.min(theta) * 180.0 / m.pi,
             "max_area_occlusion": max_frac_area_occluded,
@@ -157,6 +159,8 @@ def return_eclipse_stats():
         if stats['partial'] is not None and 'start' in stats['partial'].keys():
             stats['partial']['start'] = str(stats['partial']['start'].astimezone(localtz))
             stats['partial']['stop'] = str(stats['partial']['stop'].astimezone(localtz))
+        if stats['partial'] is not None and 'peak' in stats['partial'].keys():
+            stats['partial']['peak'] = str(stats['partial']['peak'].astimezone(localtz))
         if stats['total'] is not None and 'start' in stats['total'].keys():
             stats['total']['start'] = str(stats['total']['start'].astimezone(localtz))
             stats['total']['stop'] = str(stats['total']['stop'].astimezone(localtz))
